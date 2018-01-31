@@ -3,12 +3,15 @@
 source('~/R/R_startup.R')
 
 # Load data
-file <- 'C:\\Users\\z001c9v\\Documents\\Data\\Weather\\Minneapolis Weather.xlsx'
+# file <- 'C:\\Users\\z001c9v\\Documents\\Data\\Weather\\Minneapolis Weather.xlsx'
+file <- 'C:\Users\Z001C9V\Documents\GitHub\Minneapolis-Weather'
 
 library(readxl)
+library(readr)
+library(stringr)
+library(tidyverse)
 
-base_data <- read_excel(file, sheet = 'Sheet5', col_names = TRUE, na = 'NA')
-base_data <- rename(base_data, c("Precip-" = "Precip") )
+base_data <- read_csv('Minneapolis_Weather_percip_in_inches.csv')
 
 base_data$Precip <- as.numeric( ifelse(base_data$Precip == 'T' , 0, base_data$Precip) )
 base_data$SnowFall <- as.numeric( ifelse(base_data$SnowFall == 'T' , 0, base_data$SnowFall) )
@@ -22,41 +25,18 @@ Mthly_avg <- base_data %>%
               mutate( avg_High = mean(High) , avg_Low = mean(Low) , avg_Precip = mean(Precip) , avg_Snowfall = mean(SnowFall) ,
                       avg_Snowdepth = mean(Snowdepth)
                     ) %>%
-              distinct_( select(Year, Month, yr_mo, avg_High, avg_Low, avg_Precip, avg_Snowfall , avg_Snowdepth) )
+              select(Year, Month, yr_mo, avg_High, avg_Low, avg_Precip, avg_Snowfall , avg_Snowdepth) %>%
+              distinct()
               
 
 # Graph data
-span <- sprintf('360')
+Mthly_avg %>% ggplot(aes(x = as.factor(Month), y = avg_Snowdepth, group = Year, col = as.factor(Year))) +
+  geom_line()
+Mthly_avg %>% ggplot(aes(x = as.factor(Month), y = avg_Snowfall, group = Year, col = as.factor(Year))) +
+  geom_line()
+Mthly_avg %>% ggplot(aes(x = as.factor(Month), y = avg_Precip, group = Year, col = as.factor(Year))) +
+  geom_line()
 
-b <- ggplot(base_data[1:span,], aes(x = yr_mo_dd[1:span], y = SnowFall[1:span], color = base_data$Month[1:span]) ) + geom_point()
-b
 
-
-# Play with SQLite ( https://www.r-bloggers.com/r-and-sqlite-part-1/ )
-RSQLite::dbConnect(SQLite() , dbname = "Weather.sqlite")
-# Weather_lite <- RSQLite::dbConnect(SQLite() , dbname = "Weather.sqlite")
-
-dbWriteTable(conn = Weather_lite , name = "Minneapolis_Precip", value = "Minneapolis_Weather_percip_in_inches.csv",
-             row.names = FALSE, header = TRUE, overwrite = TRUE)
-
-dbListTables(Weather_lite)                   # The tables in the database
-dbListFields(Weather_lite, "Minneapolis_Precip")         # The columns in a table
-dbReadTable(Weather_lite, "Minneapolis_Precip")          # The data in a table
-
-start <- Sys.time()
-sqldf(dbname = "Weather.sqlite" , 
-      "select year , month , 
-	avg(Precip) as avg_precip ,
-      avg(SnowFall) as avg_SnowFall
-      from Minneapolis_Precip
-      group by year , month 
-      ")
-end <- Sys.time()
-
-print(start)
-print(end)
-print(end - start)
-
-dbDisconnect(Weather_lite) 
 
   
